@@ -1,4 +1,4 @@
-# 🚀 Orbit v0.2 - Next-Generation Version Control System
+# 🚀 Orbit v0.3.0 - Next-Generation Version Control System
 
 <div align="center">
   <img width="420" height="367" alt="orbitvcs00" src="https://github.com/user-attachments/assets/72f10322-3a33-4dd4-a9c2-0f8250d3c361" />
