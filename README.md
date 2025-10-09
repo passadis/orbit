@@ -190,4 +190,4 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 **Orbit v0.2** - *The future of version control is here.* 🌟
 
-*Built with ❤️ in Rust for performance, security, and developer productivity.*
+*Built with ❤️ by passadis in Rust for performance, security, and developer productivity.*
