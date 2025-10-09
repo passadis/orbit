@@ -64,7 +64,36 @@ orb history
 orb revert README.md
 ```
 
-## 📊 Benchmarked Performance
+## � Migrating from Git
+
+Orbit v0.3.0 makes Git migration seamless! Convert any Git repository to Orbit format with full history preservation:
+
+```bash
+# Migrate any Git repository (local or remote)
+orb fetch https://github.com/user/repository.git
+
+# Specify custom target directory
+orb fetch --target my-project https://github.com/user/repository.git
+
+# Navigate and use Orbit commands
+cd repository
+orb status    # 40% faster than git status
+orb history   # View converted commit history
+```
+
+**What gets preserved:**
+- ✅ **Full commit history** with SHA3-256 security upgrade
+- ✅ **Author information** and timestamps  
+- ✅ **Commit messages** and metadata
+- ✅ **File contents** with content-defined chunking
+- ✅ **Directory structure** exactly as in Git
+
+**What gets upgraded:**
+- 🔐 **Post-quantum security** with SHA3-256 hashing
+- ⚡ **Performance improvements** with VOS Index optimization
+- 📦 **Better deduplication** with FastCDC chunking
+
+## �📊 Benchmarked Performance
 
 | Operation | Git | Orbit v0.2 | Improvement |
 |-----------|-----|------------|-------------|
@@ -186,8 +215,49 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - **Discussions**: [GitHub Discussions](https://github.com/your-org/orbit/discussions)
 - **Benchmarks**: Included in repository under `/benchmarks`
 
+## 📋 Version History
+
+### 🚀 v0.3.0 - Git Interoperability (Current)
+**Released:** October 2025
+- **🔄 Git Migration**: New `orb fetch` command for seamless Git-to-Orbit conversion
+- **🌐 Repository Import**: Import any Git repository with full history preservation
+- **🧹 Smart Cleanup**: Windows-compatible file handling and cleanup
+- **⚡ In-Place Conversion**: Efficient conversion process without temporary directories
+- **📊 Migration Stats**: Real-time progress indicators during conversion
+- **🔒 Preserved Metadata**: Author information, timestamps, and commit messages maintained
+
+### 🏗️ v0.2.0 - Foundation Release
+**Released:** October 2025
+- **🔐 Post-Quantum Security**: SHA3-256 (Keccak) cryptographic hashing
+- **⚡ VOS Index**: 40% faster status checks with metadata optimization
+- **📦 FastCDC Chunking**: Content-defined chunking for deduplication
+- **🎯 Core Commands**: `init`, `save`, `status`, `history`, `revert`
+- **📈 Performance Benchmarks**: Comprehensive performance testing suite
+- **🛡️ Data Integrity**: Tamper-proof commit signatures and verification
+
+### 🌱 v0.1.0 - Initial Concept
+**Released:** Early 2025
+- **💡 Proof of Concept**: Basic version control functionality
+- **🏛️ DAG Architecture**: Directed Acyclic Graph for commit relationships
+- **📁 Virtual Object Store**: Foundation VOS implementation
+- **🦀 Rust Implementation**: Memory-safe systems programming foundation
+
 ---
 
-**Orbit v0.2** - *The future of version control is here.* 🌟
+## 🎯 What's Next?
+
+### 🔮 v0.4.0 - Remote Collaboration (Planned)
+- **☁️ Remote Repositories**: Push/pull with remote Orbit repositories
+- **🤝 Conflict Resolution**: Advanced merge algorithms
+- **🔄 Sync Protocol**: Efficient synchronization between repositories
+
+### 🔮 v0.5.0 - Advanced Features (Planned)
+- **🌿 Branch Management**: Full branching and merging support
+- **🏷️ Tagging System**: Release tagging and versioning
+- **📊 Advanced Analytics**: Repository statistics and insights
+
+---
+
+**Orbit v0.3.0** - *Git migration made simple. The future of version control is here.* 🌟
 
 *Built with ❤️ by passadis in Rust for performance, security, and developer productivity.*

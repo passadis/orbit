@@ -16,7 +16,7 @@ pub enum FileStatus {
 
 /// Fast status check using VOS Index for optimal performance
 pub fn check_status() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n🔍 Orbit Status (orb check) - v0.2 Optimized\n");
+    println!("\n🔍 Orbit Status (orb check) - v0.3 with Git Interop\n");
     
     // 1. Load the VOS Index
     let index = VosIndex::load()?;

@@ -5,12 +5,13 @@ mod vos;
 mod status;
 mod index;
 mod history;
+mod fetch;
 
 // The main application structure for the 'orb' executable
 #[derive(Parser, Debug)]
 #[command(
     author = "Orbit Development Team", 
-    version = "0.2.0", 
+    version = "0.3.0", 
     about = "The next-generation version control system: ORBIT.", 
     long_about = "Orbit is a performance-focused, post-quantum secure version control system built on a Virtual Object Store (VOS) architecture. It delivers lightning-fast status checks and superior performance for incremental changes using SHA3-256 cryptographic hashing and content-defined chunking."
 )]
@@ -61,10 +62,24 @@ enum Commands {
         files: Vec<String>,
     },
     
-    /// Synchronize with remote repositories (v0.3+ feature)
+    /// Fetch and convert a Git repository to Orbit format
+    ///
+    /// Downloads a Git repository from a URL and converts it to Orbit's VOS format
+    /// with post-quantum SHA3-256 hashing and content-defined chunking.
+    Fetch {
+        /// Git repository URL to fetch and convert
+        #[arg(help = "Git repository URL (e.g., https://github.com/user/repo.git)")]
+        url: String,
+        
+        /// Target directory name (optional, defaults to repository name)
+        #[arg(short, long, help = "Target directory name")]
+        target: Option<String>,
+    },
+    
+    /// Synchronize with remote repositories (v0.4+ feature)
     ///
     /// Future feature for distributed version control with remote synchronization.
-    /// Currently not implemented in the local-only v0.2 release.
+    /// Currently not implemented - use 'fetch' for Git repository conversion.
     Sync,
 }
 
@@ -98,8 +113,13 @@ fn main() {
                 eprintln!("❌ Revert failed: {}", e);
             }
         },
+        Commands::Fetch { url, target } => {
+            if let Err(e) = fetch::fetch_git_repository(url, target.as_deref()) {
+                eprintln!("❌ Fetch failed: {}", e);
+            }
+        },
         Commands::Sync => {
-            eprintln!("🚧 'orb sync' is not available in v0.2 (local-only). Coming in v0.3!");
+            eprintln!("🚧 'orb sync' is not available in v0.3 (local-only). Use 'orb fetch' for Git repository conversion.");
         }
     }
 }
