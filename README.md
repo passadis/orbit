@@ -1,5 +1,8 @@
 # 🚀 Orbit v0.2 - Next-Generation Version Control System
 
+<img width="420" height="367" alt="orbitvcs00" src="https://github.com/user-attachments/assets/72f10322-3a33-4dd4-a9c2-0f8250d3c361" />
+
+
 **Orbit** is a performance-focused, post-quantum secure version control system built on a revolutionary **Virtual Object Store (VOS)** architecture. Designed for the future of software development, Orbit delivers superior performance while maintaining cryptographic security against quantum computing threats.
 
 ## ⚡ Key Performance Advantages
