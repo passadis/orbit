@@ -1,9 +1,9 @@
 [package]
 name = "orbit"
-version = "0.3.0"
+version = "0.4.2"
 authors = ["Konstantinos Passadis"]
 description = "Orbit is a performance-focused, post-quantum secure version control system"
-edition = "2024"
+edition = "2021"
 
 [[bin]]
 name = "orb"
@@ -17,3 +17,10 @@ sha3 = "0.10"
 fastcdc = "3.2" # Content-Defined Chunking
 rayon = "1.8" # Parallel processing
 git2 = "0.20" # Git interoperability (basic features)
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+tokio-rustls = "0.25"
+rustls = "0.22"
+rustls-pemfile = "2.0"
+rustls-pki-types = "1.0"
+webpki-roots = "0.26"                            # Async stream utilities

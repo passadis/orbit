@@ -159,3 +159,34 @@ fn update_head(commit_id: &ObjectId) -> Result<(), std::io::Error> {
     ref_file.write_all(commit_id.as_bytes())?;
     Ok(())
 }
+
+/// Gets local commit IDs for synchronization with remote repositories
+pub fn get_local_commits() -> Result<Vec<ObjectId>, std::io::Error> {
+    let mut commits = Vec::new();
+    
+    // Read the HEAD commit (main branch)
+    let head_path = Path::new(ORB_DIR).join("refs").join("heads").join("main");
+    if head_path.exists() {
+        let head_content = fs::read_to_string(head_path)?;
+        let head_commit = head_content.trim().to_string();
+        if !head_commit.is_empty() {
+            commits.push(head_commit);
+        }
+    }
+    
+    // TODO: In future versions, traverse the commit DAG to get all commits
+    // For v0.3.3 MVP, we'll just return the HEAD commit
+    
+    Ok(commits)
+}
+
+/// Updates HEAD to point to the latest synchronized commit
+pub fn update_head_after_sync(commit_ids: &[ObjectId]) -> Result<(), std::io::Error> {
+    if !commit_ids.is_empty() {
+        // For now, use the last commit as HEAD (in future versions, we'll determine the proper HEAD)
+        let latest_commit = &commit_ids[commit_ids.len() - 1];
+        update_head(latest_commit)?;
+        println!("📍 Updated HEAD to: {}", latest_commit);
+    }
+    Ok(())
+}
