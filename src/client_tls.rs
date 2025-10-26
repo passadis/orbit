@@ -119,6 +119,7 @@ pub struct OrbitUrl {
     pub port: u16,
     pub use_tls: bool,
     pub server_name: String,
+    pub repository: Option<String>,
 }
 
 impl OrbitUrl {
@@ -132,26 +133,62 @@ impl OrbitUrl {
             .trim_start_matches("orbits://")  // Secure Orbit
             .trim_start_matches("orbit://");   // Plain Orbit
         
-        // Parse host and port
-        let (host, port) = if clean_url.contains(':') {
-            let parts: Vec<&str> = clean_url.split(':').collect();
-            let host = parts[0].to_string();
-            let port = parts[1].parse::<u16>()?;
+        // Parse host and port (handle repository paths like host:port/repo/path)
+        let (host, port) = if let Some(colon_pos) = clean_url.find(':') {
+            let host = clean_url[..colon_pos].to_string();
+            let remainder = &clean_url[colon_pos + 1..];
+            
+            // Find the port (everything before the first slash or end of string)
+            let port_str = if let Some(slash_pos) = remainder.find('/') {
+                &remainder[..slash_pos]
+            } else {
+                remainder
+            };
+            
+            let port = port_str.parse::<u16>()?;
             (host, port)
         } else {
             // Default ports
-            let host = clean_url.to_string();
+            let host = if let Some(slash_pos) = clean_url.find('/') {
+                clean_url[..slash_pos].to_string()
+            } else {
+                clean_url.to_string()
+            };
             let port = if use_tls { 443 } else { 8080 };
             (host, port)
         };
         
         let server_name = host.clone();
         
+        // Extract repository path if present
+        let repository = if let Some(slash_pos) = clean_url.find('/') {
+            // Find the part after host:port/
+            let after_host_port = if clean_url.contains(':') {
+                if let Some(port_start) = clean_url.find(':') {
+                    let after_port = &clean_url[port_start + 1..];
+                    if let Some(repo_start) = after_port.find('/') {
+                        Some(after_port[repo_start + 1..].to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                // No port, repository starts after first slash
+                Some(clean_url[slash_pos + 1..].to_string())
+            };
+            after_host_port
+        } else {
+            None
+        };
+        
         Ok(OrbitUrl {
             host,
             port,
             use_tls,
             server_name,
+            repository,
         })
     }
 }

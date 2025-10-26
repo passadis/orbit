@@ -1,6 +1,6 @@
 [package]
 name = "orbit"
-version = "0.4.2"
+version = "0.4.5"
 authors = ["Konstantinos Passadis"]
 description = "Orbit is a performance-focused, post-quantum secure version control system"
 edition = "2021"
@@ -24,3 +24,4 @@ rustls = "0.22"
 rustls-pemfile = "2.0"
 rustls-pki-types = "1.0"
 webpki-roots = "0.26"                            # Async stream utilities
+reqwest = { version = "0.11", features = ["json"] } # HTTP client for admin API

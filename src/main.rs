@@ -14,7 +14,7 @@ mod client_tls;
 #[derive(Parser, Debug)]
 #[command(
     author = "Orbit Development Team", 
-    version = "0.4.2", 
+    version = "0.4.5", 
     about = "The next-generation version control system: ORBIT.", 
     long_about = "Orbit is a performance-focused, post-quantum secure version control system built on a Virtual Object Store (VOS) architecture. It delivers lightning-fast status checks and superior performance for incremental changes using SHA3-256 cryptographic hashing and content-defined chunking. Now featuring VNP (VOS Network Protocol) for distributed synchronization with complete object graph support and multi-repository architecture."
 )]
@@ -121,6 +121,25 @@ enum Commands {
         #[arg(help = "Remote Orbit server URL")]
         url: String,
     },
+    
+    /// Register a new user account on an Orbit server
+    ///
+    /// Creates a new user account with email-based namespace security.
+    /// Your email becomes your username and automatically grants access to your namespace.
+    /// Example: alice@company.com gets access to alice@company.com/* repositories.
+    Register {
+        /// Your email address (becomes your username for namespace security)
+        #[arg(long, help = "Email address (e.g., alice@company.com) - becomes your username")]
+        email: String,
+        
+        /// Orbit server URL (e.g., orbit.privapulse.com:8082)
+        #[arg(long, help = "Orbit server URL for registration")]
+        server: String,
+        
+        /// Username (deprecated - email is now used as username for security)
+        #[arg(long, help = "DEPRECATED: Email is now used as username for namespace security")]
+        username: Option<String>,
+    },
 }
 
 /// Implementation of the 'orb sync' command logic.
@@ -142,13 +161,13 @@ async fn run_sync(url: &str) -> Result<(), Box<dyn std::error::Error>> {
         let tls_client = client_tls::ClientTls::new_insecure()?;
         let tls_stream = tls_client.connect(&orbit_url.host, orbit_url.port, &orbit_url.server_name).await?;
         let (mut reader, mut writer) = tokio::io::split(tls_stream);
-        return run_sync_with_stream(&mut reader, &mut writer).await;
+        return run_sync_with_stream(&mut reader, &mut writer, orbit_url.repository.as_deref()).await;
     } else {
         // Plain TCP connection
         let addr = format!("{}:{}", orbit_url.host, orbit_url.port);
         let stream = tokio::net::TcpStream::connect(&addr).await?;
         let (mut reader, mut writer) = stream.into_split();
-        return run_sync_with_stream(&mut reader, &mut writer).await;
+        return run_sync_with_stream(&mut reader, &mut writer, orbit_url.repository.as_deref()).await;
     }
 }
 
@@ -156,11 +175,85 @@ async fn run_sync(url: &str) -> Result<(), Box<dyn std::error::Error>> {
 async fn run_sync_with_stream<R, W>(
     reader: &mut R,
     writer: &mut W,
+    repository: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     R: tokio::io::AsyncReadExt + Unpin,
     W: tokio::io::AsyncWriteExt + Unpin,
 {
+    // Phase 0: Authentication - MANDATORY first step
+    println!("🔐 Authenticating with server...");
+    
+    // Try to read token from environment variable or saved token file
+    let token = match std::env::var("ORBIT_TOKEN") {
+        Ok(token) => token,
+        Err(_) => {
+            // Try to read from saved token file in home directory
+            if let Ok(home_dir) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+                let token_file = std::path::Path::new(&home_dir).join(".orb_token");
+                match std::fs::read_to_string(&token_file) {
+                    Ok(token) => {
+                        println!("🔑 Using saved authentication token");
+                        token.trim().to_string()
+                    },
+                    Err(_) => {
+                        eprintln!("❌ No authentication token found.");
+                        eprintln!("💡 Register for a new account: orb register --email your@email.com --server orbit.privapulse.com:8082");
+                        eprintln!("💡 Or set existing token: export ORBIT_TOKEN=\"your-token-here\"");
+                        return Err("Authentication token required".into());
+                    }
+                }
+            } else {
+                eprintln!("❌ Cannot find home directory for token storage");
+                return Err("Authentication token required".into());
+            }
+        }
+    };
+    
+    // Send authentication token
+    vnp::send_command(writer, vnp::VnpCommand::Authenticate(token)).await?;
+    
+    // Wait for authentication result
+    match vnp::recv_command(reader).await? {
+        vnp::VnpCommand::AuthResult { success, message } => {
+            if success {
+                println!("✅ Authenticated successfully");
+            } else {
+                eprintln!("❌ Authentication failed: {}", message);
+                return Err("Authentication failed".into());
+            }
+        }
+        vnp::VnpCommand::Error(msg) => {
+            eprintln!("❌ Server error during authentication: {}", msg);
+            return Err("Authentication error".into());
+        }
+        _ => {
+            eprintln!("❌ Unexpected response during authentication");
+            return Err("Unexpected authentication response".into());
+        }
+    }
+    
+    // Phase 1.5: Repository Selection (if repository path provided in URL)
+    if let Some(repo_name) = repository {
+        println!("📂 Selecting repository: {}", repo_name);
+        vnp::send_command(writer, vnp::VnpCommand::SelectRepository(repo_name.to_string())).await?;
+        
+        // Wait for repository selection result
+        match vnp::recv_command(reader).await? {
+            vnp::VnpCommand::RepositorySelected(selected_repo) => {
+                println!("✅ Repository '{}' selected", selected_repo);
+            }
+            vnp::VnpCommand::Error(msg) => {
+                eprintln!("❌ Repository selection failed: {}", msg);
+                return Err("Repository selection failed".into());
+            }
+            _ => {
+                eprintln!("❌ Unexpected response during repository selection");
+                return Err("Unexpected repository selection response".into());
+            }
+        }
+    }
+    
     // Get local HEAD commit
     let local_commits = match repo::get_local_commits() {
         Ok(commits) => commits,
@@ -728,6 +821,90 @@ fn object_exists_locally(object_id: &str) -> bool {
 
 
 
+/// Validate email format
+fn is_valid_email(email: &str) -> bool {
+    email.contains('@') && 
+    email.len() > 3 &&
+    !email.starts_with('@') &&
+    !email.ends_with('@') &&
+    email.chars().all(|c| c.is_alphanumeric() || "@.-_".contains(c))
+}
+
+/// Register a new user on an Orbit server
+async fn register_user(email: &str, server: &str, username: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("📝 Registering new user account...");
+    println!("📧 Email: {}", email);
+    println!("🌐 Server: {}", server);
+    
+    // Validate email format
+    if !is_valid_email(email) {
+        return Err("Invalid email format. Please provide a valid email address (e.g., alice@company.com)".into());
+    }
+    
+    // Use email as username for namespace security (ignore optional username parameter)
+    let username = email;
+    let namespace = email.split('@').next().unwrap_or("user");
+    
+    println!("👤 Username: {} (email-based for security)", username);
+    println!("🏷️  Namespace: {} (auto-granted access to {}//*)", namespace, namespace);
+    
+    // Parse server URL to get admin API endpoint
+    let orbit_url = client_tls::OrbitUrl::parse(server)?;
+    let admin_api_url = format!("http://{}:8081/admin/users", orbit_url.host);
+    
+    println!("🔗 Connecting to Admin API: {}", admin_api_url);
+    
+    // Create user registration request - server will auto-grant namespace access
+    let registration_request = serde_json::json!({
+        "username": username, // Email format for namespace security
+        "repositories": [], // Server auto-grants namespace access (alice@company.com/*)
+        "permissions": {
+            "read": true,
+            "write": true, 
+            "admin": false
+        }
+    });
+    
+    // Send registration request to Admin API
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&admin_api_url)
+        .json(&registration_request)
+        .send()
+        .await?;
+    
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json().await?;
+        
+        if let Some(token) = result.get("token").and_then(|t| t.as_str()) {
+            println!("🎉 Registration successful!");
+            println!("🔑 Your authentication token: {}", token);
+            println!("");
+            println!("💡 To use your token:");
+            println!("   export ORBIT_TOKEN=\"{}\"", token);
+            println!("");
+            println!("🚀 You can now create repositories:");
+            println!("   orb push orbits://{}:{}/{}/my-project", orbit_url.host, orbit_url.port, username);
+            
+            // Save token to user's home directory
+            if let Ok(home_dir) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+                let token_file = std::path::Path::new(&home_dir).join(".orb_token");
+                if let Ok(()) = std::fs::write(&token_file, token) {
+                    println!("💾 Token saved to: {}", token_file.display());
+                    println!("💡 Token will be automatically loaded in future sessions");
+                }
+            }
+        } else {
+            return Err("Registration succeeded but no token received".into());
+        }
+    } else {
+        let error_text = response.text().await?;
+        return Err(format!("Registration failed: {}", error_text).into());
+    }
+    
+    Ok(())
+}
+
 /// List available repositories on a remote server
 async fn list_repositories(url: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Listing repositories on server: {}", url);
@@ -759,6 +936,57 @@ where
     R: tokio::io::AsyncReadExt + Unpin,
     W: tokio::io::AsyncWriteExt + Unpin,
 {
+    // Authenticate first - load token from environment or file
+    let token = match std::env::var("ORBIT_TOKEN") {
+        Ok(token) => {
+            println!("🔑 Using environment token");
+            token
+        }
+        Err(_) => {
+            // Try to read from saved token file in home directory
+            if let Ok(home_dir) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+                let token_file = std::path::Path::new(&home_dir).join(".orb_token");
+                match std::fs::read_to_string(&token_file) {
+                    Ok(token) => {
+                        println!("🔑 Using saved authentication token");
+                        token.trim().to_string()
+                    },
+                    Err(_) => {
+                        eprintln!("❌ No authentication token found.");
+                        eprintln!("💡 Register for a new account: orb register --email your@email.com --server orbit.privapulse.com:8082");
+                        eprintln!("💡 Or set existing token: export ORBIT_TOKEN=\"your-token-here\"");
+                        return Err("Authentication token required".into());
+                    }
+                }
+            } else {
+                eprintln!("❌ Cannot find home directory for token storage");
+                return Err("Authentication token required".into());
+            }
+        }
+    };
+    
+    println!("🔐 Authenticating with server...");
+    vnp::send_command(writer, vnp::VnpCommand::Authenticate(token)).await?;
+    
+    // Wait for authentication result
+    match vnp::recv_command(reader).await? {
+        vnp::VnpCommand::AuthResult { success, message } => {
+            if success {
+                println!("✅ Authenticated successfully");
+            } else {
+                eprintln!("❌ Authentication failed: {}", message);
+                return Err("Authentication failed".into());
+            }
+        }
+        vnp::VnpCommand::Error(msg) => {
+            eprintln!("❌ Server error during authentication: {}", msg);
+            return Err("Authentication error".into());
+        }
+        _ => {
+            return Err("Unexpected authentication response".into());
+        }
+    }
+    
     // Send list repositories command
     vnp::send_command(writer, vnp::VnpCommand::ListRepositories).await?;
     
@@ -788,15 +1016,9 @@ where
 async fn clone_repository(url: &str, directory: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     println!("📥 Cloning repository from: {}", url);
     
-    // Parse URL - may include repository path like server.com:8080/repo-name
-    let (server_url, repo_name) = if url.contains('/') {
-        let parts: Vec<&str> = url.splitn(2, '/').collect();
-        (parts[0], Some(parts[1]))
-    } else {
-        (url, None)
-    };
-    
-    let orbit_url = client_tls::OrbitUrl::parse(server_url)?;
+    // Parse the full URL to extract repository information
+    let orbit_url = client_tls::OrbitUrl::parse(url)?;
+    let repo_name = orbit_url.repository.as_deref();
     
     // Determine local directory name
     let local_dir = match directory {
@@ -837,6 +1059,57 @@ where
     R: tokio::io::AsyncReadExt + Unpin,
     W: tokio::io::AsyncWriteExt + Unpin,
 {
+    // Authenticate first - load token from environment or file
+    let token = match std::env::var("ORBIT_TOKEN") {
+        Ok(token) => {
+            println!("🔑 Using environment token");
+            token
+        }
+        Err(_) => {
+            // Try to read from saved token file in home directory
+            if let Ok(home_dir) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+                let token_file = std::path::Path::new(&home_dir).join(".orb_token");
+                match std::fs::read_to_string(&token_file) {
+                    Ok(token) => {
+                        println!("🔑 Using saved authentication token");
+                        token.trim().to_string()
+                    },
+                    Err(_) => {
+                        eprintln!("❌ No authentication token found.");
+                        eprintln!("💡 Register for a new account: orb register --email your@email.com --server orbit.privapulse.com:8082");
+                        eprintln!("💡 Or set existing token: export ORBIT_TOKEN=\"your-token-here\"");
+                        return Err("Authentication token required".into());
+                    }
+                }
+            } else {
+                eprintln!("❌ Cannot find home directory for token storage");
+                return Err("Authentication token required".into());
+            }
+        }
+    };
+    
+    println!("🔐 Authenticating with server...");
+    vnp::send_command(writer, vnp::VnpCommand::Authenticate(token)).await?;
+    
+    // Wait for authentication result
+    match vnp::recv_command(reader).await? {
+        vnp::VnpCommand::AuthResult { success, message } => {
+            if success {
+                println!("✅ Authenticated successfully");
+            } else {
+                eprintln!("❌ Authentication failed: {}", message);
+                return Err("Authentication failed".into());
+            }
+        }
+        vnp::VnpCommand::Error(msg) => {
+            eprintln!("❌ Server error during authentication: {}", msg);
+            return Err("Authentication error".into());
+        }
+        _ => {
+            return Err("Unexpected authentication response".into());
+        }
+    }
+    
     // If specific repository requested, select it first
     if let Some(repo) = repo_name {
         println!("📂 Selecting repository: {}", repo);
@@ -942,6 +1215,12 @@ where
         }
     }
     
+    // Update HEAD to point to the latest commit after cloning
+    if !missing_commits.is_empty() {
+        repo::update_head_after_sync(&missing_commits)?;
+        println!("📍 Updated HEAD to: {}", missing_commits.last().unwrap());
+    }
+    
     println!("✅ Repository cloned successfully!");
     Ok(())
 }
@@ -1003,6 +1282,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match list_repositories(url).await {
                 Ok(()) => println!("✅ Repository list retrieved!"),
                 Err(e) => eprintln!("❌ Failed to list repositories: {}", e),
+            }
+        }
+        Commands::Register { email, server, username } => {
+            match register_user(email, server, username.as_deref()).await {
+                Ok(()) => println!("✅ User registration successful!"),
+                Err(e) => eprintln!("❌ Registration failed: {}", e),
             }
         }
     }

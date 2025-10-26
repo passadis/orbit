@@ -7,6 +7,12 @@ use std::io;
 /// Commands exchanged between the Orbit client and server.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum VnpCommand {
+    /// Client: Authentication with API token
+    Authenticate(String), // API token
+    
+    /// Server: Authentication result
+    AuthResult { success: bool, message: String },
+    
     /// Client: Announces the commit IDs it possesses.
     Have(Vec<ObjectId>), 
 

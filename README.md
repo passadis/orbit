@@ -1,4 +1,4 @@
-# 🚀 Orbit v0.4.2 - Distributed Version Control with Complete Object Graph Sync
+# 🚀 Orbit v0.4.5 - GitHub-Like Distributed VCS with Email-Based Namespaces
 
 <div align="center">
   <img width="420" height="367" alt="orbitvcs00" src="https://github.com/user-attachments/assets/72f10322-3a33-4dd4-a9c2-0f8250d3c361" />
@@ -6,94 +6,68 @@
 
 ---
 
-**Orbit** is a production-ready, post-quantum secure version control system with **complete object graph synchronization**, **multi-repository support**, and **Azure cloud integration**. Built on the revolutionary Virtual Object Store (VOS) architecture with TLS-encrypted distributed sync.
+**Orbit** is a production-ready distributed version control system with **email-based namespace security**, **self-service registration**, and **GitHub-like clone workflows**. Experience seamless distributed development with auto-repository creation and complete authentication.
 
-## 🎯 Key Features (v0.4.2)
+## 🎯 Key Features (v0.4.5)
 
+- **� Email-Based Namespaces** - alice@company.com gets alice/* access (collision-proof)
+- **🔐 Self-Service Registration** - REST API user management with token authentication  
+- **�️ Auto-Repository Creation** - Repositories created automatically when accessed
+- **� GitHub-Like Clone Workflow** - `orb clone` → `orb checkout` → actual files
 - **🔄 Complete Object Graph Sync** - Full commits, trees, files, and chunks synchronization
-- **🏛️ Multi-Repository Architecture** - Host multiple repositories with namespace isolation
-- **🔒 TLS-Encrypted Communication** - End-to-end security with rustls
-- **☁️ Azure Production Deployment** - Container Apps with persistent storage
-- **⚡ VOS Performance** - 40% faster than Git with SHA3-256 security
-- **🌐 VNP Protocol v2.2** - Custom binary protocol for efficient distributed sync
+- **☁️ Azure Production Deployment** - Container Apps with persistent namespace storage
 
 ## You want to test it end to end ? Contact me via passadis.github.io to discuss your use case and help you set up the Server!
 
 ## 🚀 Quick Start
 
 ```bash
-# Install globally
-cargo install --path .
+# 1. Register with email (self-service)
+curl -X POST http://your-server.com:8081/admin/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice@company.com", "repositories": [], "permissions": {"read": true, "write": true, "admin": false}}'
 
-# Initialize repository
-orb init
+# 2. Set authentication token
+export ORBIT_TOKEN="your-token-here"
 
-# Save changes
-echo "Hello, Orbit!" > file.txt
-orb save -m "Initial commit"
+# 3. Clone any repository (auto-created if doesn't exist)
+orb clone "orbits://your-server.com:8082/alice/my-project" my-project
 
-# Sync to cloud
-orb sync orbits://your-server.com:8082
-
-# List remote repositories
-orb list-repos orbits://your-server.com:8082
-
-# Clone repository
-orb clone orbits://your-server.com:8082 repository-name
+# 4. Checkout files and start working
+cd my-project
+orb checkout
 ```
 
-## 🔄 Complete Object Graph Sync
+## 📧 Email-Based Security
 
-Orbit v0.4.2 introduces **complete object graph synchronization** ensuring full repository integrity:
+Access repositories based on your email namespace:
+- `alice@company.com` → can access `alice/*` repositories
+- `bob@startup.io` → can access `bob/*` repositories  
+- Automatic collision prevention and namespace isolation
 
-- **Commits** → **Trees** → **Files** → **Chunks**
-- Recursive dependency resolution
-- Atomic sync operations
-- Zero data loss guarantee
+## 🏗️ Self-Service Repository Management
 
-## ☁️ Azure Production Deployment
-
-Deploy Orbit server to Azure Container Apps with persistent storage:
+**New in v0.4.5**: Repositories are created automatically when you access them:
 
 ```bash
-# Build and push to Azure Container Registry
-az acr build --registry <your-acr> --image orbit-server:latest .
+# List your namespace repositories (authenticates automatically)
+orb list-repos "orbits://your-server.com:8082"
 
-# Deploy with Azure File Share persistence
-az containerapp create \
-  --name "orbit-server" \
-  --resource-group "<your-rg>" \
-  --environment "<your-env>" \
-  --image "<your-acr>.azurecr.io/orbit-server:latest" \
-  --transport tcp \
-  --target-port 8082 \
-  --ingress external \
-  --min-replicas 1 \
-  --max-replicas 5 \
-  --cpu 1.0 \
-  --memory 2.0Gi \
-  --env-vars RUST_LOG="info"
+# Clone creates repository if it doesn't exist
+orb clone "orbits://your-server.com:8082/alice/new-idea" new-idea
+
+# Your email determines namespace access:
+# alice@company.com can access alice/project1, alice/project2, etc.
 ```
 
-### Sync with Cloud Server
-```bash
-# Sync to Azure (TLS encrypted)
-orb sync "orbits://your-app.azurecontainerapps.io:8081"
-```
+## ☁️ Azure Production Ready
 
-## 🏛️ Multi-Repository Architecture 
-
-**New in v0.4.2**: Host multiple isolated repositories on a single server:
+Deploy with complete namespace isolation and persistent storage:
 
 ```bash
-# List available repositories
-orb list-repos orbits://your-server.com:8082
-
-# Clone specific repository
-orb clone orbits://your-server.com:8082 my-project
-
-# Sync with specific repository (automatically selected after clone)
-orb sync orbits://your-server.com:8082
+# Server runs on port 8082 (VNP protocol)
+# Admin API runs on port 8081 (user management)
+# Each namespace gets isolated directory: /alice/, /bob/, etc.
 ```
 
 ## 🔧 Command Reference
@@ -104,44 +78,48 @@ orb init                           # Initialize new repository
 orb save -m "message"              # Create commit with complete object graph
 orb check                          # Check working directory status
 orb history                        # Show commit history (DAG)
+orb revert                         # Revert files to their last committed state
+orb fetch                          # Fetch and convert a Git repository to Orbit format
 orb checkout                       # Checkout files from commits
 ```
 
-### Distributed Commands *(v0.4.2)*
+### Distributed Commands *(v0.4.5)*
 ```bash
+orb list-repos <url>               # List repositories in your namespace
+orb clone <url/namespace/repo> <local-name>  # Clone (auto-creates if needed)
 orb sync <url>                     # Synchronize with remote server
-orb list-repos <url>               # List remote repositories  
-orb clone <url> <repo-name>        # Clone remote repository
+orb register                       # Register a new user account on an Orbit server
 ```
 
 ## 🏗️ Architecture
 
-### VOS Network Protocol v2.2
-- **Complete Object Graph Sync** - Commits → Trees → Files → Chunks
-- **Multi-Repository Support** - Namespace isolation and management
-- **TLS Encryption** - End-to-end security with rustls
-- **Efficient Binary Protocol** - Custom serialization with serde
+### Email-Based Security Architecture
+- **Namespace Extraction** - alice@company.com → alice/* access
+- **Collision Prevention** - Each email gets unique namespace  
+- **Auto-Repository Creation** - Repositories created on first access
+- **Token Authentication** - SHA3-256 secure token validation
 
-### Production Deployment
-- **Azure Container Apps** - Serverless container orchestration
-- **Azure File Share** - Persistent multi-repository storage
-- **Auto-scaling** - Handle variable workloads efficiently
-- **Monitoring Ready** - Azure Monitor integration
+### Production Deployment  
+- **Azure Container Apps** - Dual-port deployment (8082 + 8081)
+- **Namespace Isolation** - Each user gets isolated directory
+- **REST Admin API** - Self-service user registration
+- **TLS Security** - End-to-end encrypted communication
 
 ---
 
 ## 📋 Version History
 
-### 🚀 v0.4.2 - Complete Object Graph Sync *(Current)*
+### 🚀 v0.4.5 - Email-Based Namespaces & GitHub-Like Workflow *(Current)*
 **Released:** October 2025
-- **🔄 Complete Object Graph Sync** - Full repository integrity with commits, trees, files, and chunks
-- **�️ Multi-Repository Architecture** - Host multiple repositories with namespace isolation
-- **☁️ Azure Production Deployment** - Container Apps with Azure File Share persistence
-- **� Enhanced Security** - TLS 1.3 encryption with production certificates
-- **⚡ Performance Optimized** - 40% faster operations with VOS Index caching
+- **� Email-Based Namespace Security** - alice@company.com gets alice/* access automatically
+- **🔐 Self-Service Registration** - REST API for user management without admin intervention
+- **🏗️ Auto-Repository Creation** - Repositories created when accessed (like GitHub)
+- **📥 Complete Clone Workflow** - `orb clone` → `orb checkout` → working files extracted
+- **🔄 Object Graph Integrity** - Full commits, trees, files, chunks with proper routing
+- **☁️ Production Azure Deployment** - Dual-port server with namespace isolation
 
 ---
 
-**Orbit v0.4.2** - *Complete distributed version control with object graph integrity.* 🌟
+**Orbit v0.4.5** - *GitHub-like distributed VCS with email-based security.* 🌟
 
-*Built with ❤️ in Rust for performance, security, and developer productivity.*
+*Built with ❤️ by K.Passadis in Rust for performance, security, and developer productivity.*
