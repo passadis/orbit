@@ -45,6 +45,10 @@ logs/
 .env.production
 .env.test
 
+# AI configuration files (contain API keys)
+.orbit-ai-config.json
+.env.example
+
 # Orbit test repositories (created during development/testing)
 test-git/
 test-orbit/

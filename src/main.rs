@@ -9,6 +9,7 @@ mod history;
 mod fetch;
 mod vnp;
 mod client_tls;
+mod ai;
 
 // The main application structure for the 'orb' executable
 #[derive(Parser, Debug)]
@@ -139,6 +140,15 @@ enum Commands {
         /// Username (deprecated - email is now used as username for security)
         #[arg(long, help = "DEPRECATED: Email is now used as username for namespace security")]
         username: Option<String>,
+    },
+
+    /// Ask AI about your repository using natural language
+    ///
+    /// Query your repository state, files, commits, and more using AI.
+    /// Example: orb ai "What is the current branch?"
+    Ai {
+        /// Your question about the repository
+        message: String,
     },
 }
 
@@ -1225,6 +1235,64 @@ where
     Ok(())
 }
 
+/// Build repository context for AI queries
+fn build_repo_context() -> Result<ai::RepoContext, Box<dyn std::error::Error>> {
+    let current_branch = repo::get_current_branch().unwrap_or_else(|_| "unknown".to_string());
+    
+    // Get tracked files from the .orb/objects directory
+    let objects_path = std::path::Path::new(".orb").join("objects");
+    let mut files = Vec::new();
+    
+    if objects_path.exists() {
+        // Count objects in the VOS
+        if let Ok(entries) = std::fs::read_dir(&objects_path) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
+                        for sub_entry in sub_entries.flatten() {
+                            if sub_entry.path().is_file() {
+                                files.push(format!("object-{}", sub_entry.file_name().to_string_lossy()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Get recent commits
+    let recent_commits = repo::get_recent_commits(5)?;
+    
+    // Check repository status
+    let status = if files.is_empty() {
+        "empty (no files tracked)".to_string()
+    } else {
+        format!("{} objects in repository", files.len())
+    };
+    
+    Ok(ai::RepoContext {
+        current_branch,
+        files,
+        recent_commits,
+        status,
+    })
+}
+
+/// Run AI query with repository context
+async fn run_ai_query(message: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("🤖 Querying AI about your repository...\n");
+    
+    // Build repository context
+    let context = build_repo_context()?;
+    
+    // Initialize AI and query
+    let ai = ai::OrbitAI::new()?;
+    let response = ai.query(message, &context).await?;
+    
+    println!("🤖 {}", response);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = OrbCli::parse();
@@ -1288,6 +1356,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match register_user(email, server, username.as_deref()).await {
                 Ok(()) => println!("✅ User registration successful!"),
                 Err(e) => eprintln!("❌ Registration failed: {}", e),
+            }
+        }
+        Commands::Ai { message } => {
+            match run_ai_query(message).await {
+                Ok(()) => {},
+                Err(e) => eprintln!("❌ AI query failed: {}", e),
             }
         }
     }
