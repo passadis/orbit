@@ -76,3 +76,19 @@ pub fn save_object(data: &[u8]) -> ObjectId {
     
     object_id
 }
+
+/// Stores object data with a pre-computed ID (for objects received from server)
+pub fn store_object_with_id(object_id: &str, data: &[u8]) -> Result<(), std::io::Error> {
+    let objects_dir = Path::new(".orb").join("objects");
+    let (prefix, suffix) = object_id.split_at(2);
+    let object_dir = objects_dir.join(prefix);
+    let object_file = object_dir.join(suffix);
+    
+    // Create directory if it doesn't exist
+    fs::create_dir_all(&object_dir)?;
+    
+    // Write the object data (overwrites if exists, for sync consistency)
+    fs::write(&object_file, data)?;
+    
+    Ok(())
+}
