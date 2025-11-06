@@ -1241,7 +1241,7 @@ fn build_repo_context() -> Result<ai::RepoContext, Box<dyn std::error::Error>> {
     
     // Get tracked files from the .orb/objects directory
     let objects_path = std::path::Path::new(".orb").join("objects");
-    let mut files = Vec::new();
+    let mut file_count = 0;
     
     if objects_path.exists() {
         // Count objects in the VOS
@@ -1249,11 +1249,7 @@ fn build_repo_context() -> Result<ai::RepoContext, Box<dyn std::error::Error>> {
             for entry in entries.flatten() {
                 if entry.path().is_dir() {
                     if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
-                        for sub_entry in sub_entries.flatten() {
-                            if sub_entry.path().is_file() {
-                                files.push(format!("object-{}", sub_entry.file_name().to_string_lossy()));
-                            }
-                        }
+                        file_count += sub_entries.count();
                     }
                 }
             }
@@ -1264,11 +1260,14 @@ fn build_repo_context() -> Result<ai::RepoContext, Box<dyn std::error::Error>> {
     let recent_commits = repo::get_recent_commits(5)?;
     
     // Check repository status
-    let status = if files.is_empty() {
+    let status = if file_count == 0 {
         "empty (no files tracked)".to_string()
     } else {
-        format!("{} objects in repository", files.len())
+        format!("{} objects in repository", file_count)
     };
+    
+    // Return minimal file list to avoid token limits
+    let files = vec![format!("{} total objects", file_count)];
     
     Ok(ai::RepoContext {
         current_branch,
