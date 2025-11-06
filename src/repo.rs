@@ -190,3 +190,51 @@ pub fn update_head_after_sync(commit_ids: &[ObjectId]) -> Result<(), std::io::Er
     }
     Ok(())
 }
+
+/// Get the current branch name
+pub fn get_current_branch() -> Result<String, std::io::Error> {
+    let head_path = Path::new(ORB_DIR).join("HEAD");
+    if !head_path.exists() {
+        return Ok("main".to_string());
+    }
+    
+    let head_content = fs::read_to_string(head_path)?;
+    let head_trimmed = head_content.trim();
+    
+    // Parse "ref: refs/heads/main" format
+    if let Some(branch) = head_trimmed.strip_prefix("ref: refs/heads/") {
+        Ok(branch.to_string())
+    } else {
+        Ok("main".to_string())
+    }
+}
+
+/// Get recent commits with their messages
+pub fn get_recent_commits(limit: usize) -> Result<Vec<crate::ai::CommitInfo>, std::io::Error> {
+    let mut result = Vec::new();
+    
+    // Get HEAD commit
+    let head_path = Path::new(ORB_DIR).join("HEAD");
+    if !head_path.exists() {
+        return Ok(result);
+    }
+    
+    let head_content = fs::read_to_string(head_path)?;
+    let head_trimmed = head_content.trim();
+    
+    // Try to get commit from branch reference
+    if let Some(branch) = head_trimmed.strip_prefix("ref: refs/heads/") {
+        let branch_path = Path::new(ORB_DIR).join("refs").join("heads").join(branch);
+        if branch_path.exists() {
+            let commit_id = fs::read_to_string(branch_path)?.trim().to_string();
+            if !commit_id.is_empty() && result.len() < limit {
+                result.push(crate::ai::CommitInfo {
+                    hash: commit_id[..8].to_string(),
+                    message: "Server update commit".to_string(),
+                });
+            }
+        }
+    }
+    
+    Ok(result)
+}

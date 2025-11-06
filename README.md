@@ -7,10 +7,11 @@
 
 ---
 
-**Orbit** is a production-ready distributed version control system built on the revolutionary **Virtual Object Store (VOS)** architecture with **VNP (VOS Network Protocol)** for lightning-fast, SHA3-secured transactions. Features **email-based namespace security**, **self-service registration**, and **GitHub-compatible clone workflows** with seamless distributed development and auto-repository creation.
+**Orbit** is a production-ready distributed version control system built on the revolutionary **Virtual Object Store (VOS)** architecture with **VNP (VOS Network Protocol)** for lightning-fast, SHA3-secured transactions. Features **AI-powered natural language queries**, **email-based namespace security**, **self-service registration**, and **GitHub-compatible clone workflows** with seamless distributed development and auto-repository creation.
 
 ## 🎯 Key Features (v0.4.5)
 
+- **🤖 AI-Powered Queries** - Ask questions about your repository in natural language using Azure OpenAI
 - **⚡ Revolutionary VOS Architecture** - Virtual Object Store with 40% faster operations than Git
 - **🌐 VNP Protocol** - Custom VOS Network Protocol with SHA3-256 secured transactions
 - **📧 Email-Based Namespaces** - alice@company.com gets alice/* access (collision-proof)
@@ -39,7 +40,38 @@ orb clone "orbits://your-server.com:8082/alice/my-project" my-project
 # 4. Checkout files and start working
 cd my-project
 orb checkout
+
+# 5. Ask AI about your repository! 🤖
+orb ai "What files are tracked in this repository?"
+orb ai "What is the current branch and latest commit?"
+orb ai "How many files were changed recently?"
 ```
+
+## 🤖 AI-Powered Queries (NEW!)
+
+**Orbit now features built-in AI assistance powered by Azure OpenAI!**
+
+Ask questions about your repository in natural language:
+
+```bash
+# Query repository state
+orb ai "What is the current branch?"
+orb ai "How many files are tracked?"
+orb ai "What's the latest commit message?"
+
+# Analyze changes
+orb ai "What files were modified recently?"
+orb ai "Tell me about recent commits"
+orb ai "Is the repository clean?"
+```
+
+**Setup**: Create `.orbit-ai-config.json` or use environment variables:
+- `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint
+- `AZURE_OPENAI_API_KEY` - Your API key
+- `AZURE_OPENAI_DEPLOYMENT` - Model deployment name
+- `AZURE_OPENAI_API_VERSION` - API version
+
+The AI has full context of your repository including current branch, tracked files, commit history, and working directory status!
 
 ## 📧 Email-Based Security
 
@@ -86,6 +118,14 @@ orb fetch                          # Fetch and convert a Git repository to Orbit
 orb checkout                       # Checkout files from commits
 ```
 
+### AI Commands *(NEW in v0.4.5)* 🤖
+```bash
+orb ai "your question"             # Ask AI about your repository using natural language
+                                   # Examples: "What's the current branch?"
+                                   #          "How many files are tracked?"
+                                   #          "What's the latest commit?"
+```
+
 ### Distributed Commands *(v0.4.5)*
 ```bash
 orb list-repos <url>               # List repositories in your namespace
@@ -102,20 +142,23 @@ orb register                       # Register a new user account on an Orbit ser
 - **Post-Quantum Security** - SHA3-256 hashing for future-proof cryptographic security
 - **Email-Based Namespaces** - alice@company.com → alice/* access with collision prevention
 - **Auto-Repository Creation** - Repositories created on first access with namespace isolation
+- **AI Integration** - Azure OpenAI GPT-4o for natural language repository queries
 
 ### Production Deployment  
 - **Azure Container Apps** - Dual-port deployment (8082 + 8081)
 - **Namespace Isolation** - Each user gets isolated directory
 - **REST Admin API** - Self-service user registration
 - **TLS Security** - End-to-end encrypted communication
+- **AI-Powered CLI** - Built-in intelligent assistant for repository operations
 
 ---
 
 ## 📋 Version History
 
-### 🚀 v0.4.5 - Email-Based Namespaces & GitHub-Like Workflow *(Current)*
-**Released:** October 2025
-- **� Email-Based Namespace Security** - alice@company.com gets alice/* access automatically
+### 🚀 v0.4.5 - Email-Based Namespaces & AI-Powered Queries *(Current)*
+**Released:** November 2025
+- **🤖 AI-Powered Queries** - Natural language repository queries using Azure OpenAI GPT-4o
+- **📧 Email-Based Namespace Security** - alice@company.com gets alice/* access automatically
 - **🔐 Self-Service Registration** - REST API for user management without admin intervention
 - **🏗️ Auto-Repository Creation** - Repositories created when accessed (like GitHub)
 - **📥 Complete Clone Workflow** - `orb clone` → `orb checkout` → working files extracted
@@ -124,6 +167,6 @@ orb register                       # Register a new user account on an Orbit ser
 
 ---
 
-**Orbit v0.4.5** - *GitHub-like distributed VCS with email-based security.* 🌟
+**Orbit v0.4.5** - *AI-powered distributed VCS with email-based security and natural language queries.* 🌟🤖
 
 *Built with ❤️ by K.Passadis in Rust for performance, security, and developer productivity.*
