@@ -855,7 +855,7 @@ async fn register_user(email: &str, server: &str, username: Option<&str>) -> Res
     let username = email;
     let namespace = email.split('@').next().unwrap_or("user");
     
-    println!("👤 Username: {} (email-based for security)", username);
+    println!("👤 Username will be based on your email for security.");
     println!("🏷️  Namespace: {} (auto-granted access to {}//*)", namespace, namespace);
     
     // Parse server URL to get admin API endpoint
