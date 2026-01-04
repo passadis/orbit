@@ -894,7 +894,7 @@ async fn register_user(email: &str, server: &str, username: Option<&str>) -> Res
             println!("   export ORBIT_TOKEN=\"{}\"", token);
             println!("");
             println!("🚀 You can now create repositories:");
-            println!("   orb push orbits://{}:{}/{}/my-project", orbit_url.host, orbit_url.port, username);
+            println!("   orb push orbits://{}:{}/<username>/my-project", orbit_url.host, orbit_url.port);
             
             // Save token to user's home directory
             if let Ok(home_dir) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
