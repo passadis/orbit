@@ -1,0 +1,111 @@
+name: Welcome Assistant
+
+on:
+  discussion_comment:
+    types: [created]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      discussions: write
+
+    steps:
+      - name: Welcome new discussion participants
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commenter = context.payload.comment.user.login;
+            const discussionNodeId = context.payload.discussion.node_id;
+
+            // Paginated query for top-level comments and their replies to
+            // accurately determine whether this is the user's first participation.
+            const query = `
+              query($nodeId: ID!, $cursor: String) {
+                node(id: $nodeId) {
+                  ... on Discussion {
+                    comments(first: 100, after: $cursor) {
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                      nodes {
+                        author {
+                          login
+                        }
+                        replies(first: 100) {
+                          nodes {
+                            author {
+                              login
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            // Count every comment and reply by this user across all pages
+            let totalUserComments = 0;
+            let hasNextPage = true;
+            let cursor = null;
+
+            while (hasNextPage) {
+              const result = await github.graphql(query, {
+                nodeId: discussionNodeId,
+                cursor,
+              });
+              const { nodes, pageInfo } = result.node.comments;
+
+              for (const comment of nodes) {
+                if (comment.author && comment.author.login === commenter) {
+                  totalUserComments++;
+                }
+                for (const reply of comment.replies.nodes) {
+                  if (reply.author && reply.author.login === commenter) {
+                    totalUserComments++;
+                  }
+                }
+              }
+
+              // Early exit once we know this is not a first-time participant
+              if (totalUserComments > 1) break;
+
+              hasNextPage = pageInfo.hasNextPage;
+              cursor = pageInfo.endCursor;
+            }
+
+            // Only welcome the user on their very first comment or reply
+            if (totalUserComments === 1) {
+              const welcomeMessage = [
+                `🎉 Welcome to the **Orbit** community, @${commenter}! 🚀`,
+                ``,
+                `Thank you so much for joining our discussion and sharing your thoughts! We're thrilled to have you here. Your participation means a great deal to us, and we look forward to hearing more from you.`,
+                ``,
+                `Feel free to explore the project, ask questions, and contribute ideas — together we're building something amazing! ✨`,
+              ].join('\n');
+
+              const mutation = `
+                mutation($discussionId: ID!, $body: String!) {
+                  addDiscussionComment(input: {
+                    discussionId: $discussionId,
+                    body: $body
+                  }) {
+                    comment {
+                      id
+                    }
+                  }
+                }
+              `;
+
+              await github.graphql(mutation, {
+                discussionId: discussionNodeId,
+                body: welcomeMessage,
+              });
+
+              console.log(`Welcomed @${commenter} on their first contribution to this discussion.`);
+            } else {
+              console.log(`@${commenter} has already participated (${totalUserComments} contributions). No welcome needed.`);
+            }
